@@ -6,8 +6,8 @@ import cv2
 import screeninfo
 from PyQt5 import QtCore, QtGui, QtWidgets
 from PyQt5.QtWidgets import QMainWindow, QApplication, QPushButton, QWidget, QLabel, QComboBox
-from PyQt5.QtGui import QPixmap, QImage  
-import sys  
+from PyQt5.QtGui import QPixmap, QImage
+import sys
 import multiprocessing
 
 # get the size of the screen
@@ -17,64 +17,67 @@ screen = screeninfo.get_monitors()[screen_id]
 full_screen_width, full_screen_height = screen.width, screen.height
 
 
-class Q_Window(QWidget): 
-      
-    def __init__(self):  
-        super(Q_Window, self).__init__()    
+class Q_Window(QWidget):
+
+    def __init__(self):
+        super(Q_Window, self).__init__()
         self.initParas()
         self.initUI()
-
 
     def initParas(self):
         self.timer_camera = QtCore.QTimer()
         self.timer_camera_2 = QtCore.QTimer()
 
         self.cap = cv2.VideoCapture()
-        self.cap_size = [1280, 720]
+        self.cap_size = [1920, 1080]
         self.cap_2 = cv2.VideoCapture()
-        self.cap_2_size = [1280, 720]
+        self.cap_2_size = [1920, 1080]
 
-        self.CAM_1 = 1
-        self.CAM_2 = 2
+        self.CAM_1 = 0
+        self.CAM_2 = 1
         self.full_screen_show_id = 1
-          
 
-    def initUI(self):                 
+    def initUI(self):
         self.image_View = QLabel("image", self)
         self.image_View.resize(640, 480)
         self.image_View.setScaledContents(True)
-        self.image_View.move(60,30)
-        jpg=QPixmap('timg.jpeg')  
+        self.image_View.move(60, 30)
+        jpg = QPixmap('timg.jpeg')
         self.image_View.setPixmap(jpg)
 
         self.image_View_2 = QLabel("image2", self)
         self.image_View_2.resize(640, 480)
         self.image_View_2.setScaledContents(True)
-        self.image_View_2.move(760,30)
-        self.image_View_2.setPixmap(jpg) 
+        self.image_View_2.move(760, 30)
+        self.image_View_2.setPixmap(jpg)
+
+        self.image_View_out = QLabel("image_out", self)
+        self.image_View_out.resize(320, 240)
+        self.image_View_out.setScaledContents(True)
+        self.image_View_out.move(700, 620)
+        self.image_View_out.setPixmap(jpg)
 
         self.det_Button = QPushButton(u'打开输入源一', self)
-        self.det_Button.clicked.connect(self.open_camera)  
-        self.det_Button.resize(200,40)  
-        self.det_Button.move(360, 560) 
+        self.det_Button.clicked.connect(self.open_camera)
+        self.det_Button.resize(200, 40)
+        self.det_Button.move(360, 520)
 
         self.det_Button_2 = QPushButton(u'打开输入源二', self)
-        self.det_Button_2.clicked.connect(self.open_camera_2)  
-        self.det_Button_2.resize(200,40)  
-        self.det_Button_2.move(900, 560)
+        self.det_Button_2.clicked.connect(self.open_camera_2)
+        self.det_Button_2.resize(200, 40)
+        self.det_Button_2.move(900, 520)
 
         self.switch_Button = QPushButton(u'切换到二号输入源', self)
-        self.switch_Button.clicked.connect(self.switch_input)  
-        self.switch_Button.resize(200,80)  
-        self.switch_Button.move(630, 620)
-        
+        self.switch_Button.clicked.connect(self.switch_input)
+        self.switch_Button.resize(200, 120)
+        self.switch_Button.move(400, 700)
+
         self.timer_camera.timeout.connect(self.show_camera)
         self.timer_camera_2.timeout.connect(self.show_camera_2)
 
-        self.setGeometry(300, 300, 1460, 720)  
-        self.setWindowTitle('ChgDirector')      
-        self.show() 
-
+        self.setGeometry(300, 300, 1460, 900)
+        self.setWindowTitle('ChgDirector')
+        self.show()
 
     def switch_input(self):
         if self.full_screen_show_id == 1:
@@ -84,16 +87,17 @@ class Q_Window(QWidget):
             self.full_screen_show_id = 1
             self.switch_Button.setText(u'切换到二号输入源')
 
-
     def open_camera(self):
         if self.timer_camera.isActive() == False:
             flag = self.cap.open(self.CAM_1)
             self.cap.set(cv2.CAP_PROP_FRAME_WIDTH, self.cap_size[0])
             self.cap.set(cv2.CAP_PROP_FRAME_HEIGHT, self.cap_size[1])
+            self.cap.set(cv2.CAP_PROP_FPS, 25)
 
             if flag == False:
-                msg = QtWidgets.QMessageBox.warning(self, u"Warning", u"请检测相机与电脑是否连接正确", buttons=QtWidgets.QMessageBox.Ok,
-                                                defaultButton=QtWidgets.QMessageBox.Ok)
+                msg = QtWidgets.QMessageBox.warning(self, u"Warning", u"请检测相机与电脑是否连接正确",
+                                                    buttons=QtWidgets.QMessageBox.Ok,
+                                                    defaultButton=QtWidgets.QMessageBox.Ok)
             else:
                 self.timer_camera.start(40)
                 self.det_Button.setText(u'关闭输入源')
@@ -103,28 +107,32 @@ class Q_Window(QWidget):
             self.image_View.clear()
             self.det_Button.setText(u'打开输入源')
 
-
     def show_camera(self):
         flag, image = self.cap.read()
 
         if self.full_screen_show_id == 1:
             self.show_full_screen(image)
+            out_img = cv2.resize(image, (320, 240))
+            out_img = cv2.cvtColor(out_img, cv2.COLOR_BGR2RGB)
+            showImage_out = QtGui.QImage(out_img.data, out_img.shape[1], out_img.shape[0], QtGui.QImage.Format_RGB888)
+            self.image_View_out.setPixmap(QtGui.QPixmap.fromImage(showImage_out))
 
         show = cv2.resize(image, (640, 480))
         show = cv2.cvtColor(show, cv2.COLOR_BGR2RGB)
         showImage = QtGui.QImage(show.data, show.shape[1], show.shape[0], QtGui.QImage.Format_RGB888)
         self.image_View.setPixmap(QtGui.QPixmap.fromImage(showImage))
 
-        
     def open_camera_2(self):
         if self.timer_camera.isActive() == False:
             flag = self.cap_2.open(self.CAM_2)
             self.cap_2.set(cv2.CAP_PROP_FRAME_WIDTH, self.cap_2_size[0])
             self.cap_2.set(cv2.CAP_PROP_FRAME_HEIGHT, self.cap_2_size[1])
+            self.cap_2.set(cv2.CAP_PROP_FPS, 25)
 
             if flag == False:
-                msg = QtWidgets.QMessageBox.warning(self, u"Warning", u"请检测输入源与电脑是否连接正确", buttons=QtWidgets.QMessageBox.Ok,
-                                                defaultButton=QtWidgets.QMessageBox.Ok)
+                msg = QtWidgets.QMessageBox.warning(self, u"Warning", u"请检测输入源与电脑是否连接正确",
+                                                    buttons=QtWidgets.QMessageBox.Ok,
+                                                    defaultButton=QtWidgets.QMessageBox.Ok)
             else:
                 self.timer_camera_2.start(40)
                 self.det_Button_2.setText(u'关闭输入源')
@@ -134,18 +142,20 @@ class Q_Window(QWidget):
             self.image_View_2.clear()
             self.det_Button_2.setText(u'打开输入源')
 
-
     def show_camera_2(self):
         flag, image = self.cap_2.read()
 
         if self.full_screen_show_id == 2:
             self.show_full_screen(image)
+            out_img = cv2.resize(image, (320, 240))
+            out_img = cv2.cvtColor(out_img, cv2.COLOR_BGR2RGB)
+            showImage_out = QtGui.QImage(out_img.data, out_img.shape[1], out_img.shape[0], QtGui.QImage.Format_RGB888)
+            self.image_View_out.setPixmap(QtGui.QPixmap.fromImage(showImage_out))
 
         show = cv2.resize(image, (640, 480))
         show = cv2.cvtColor(show, cv2.COLOR_BGR2RGB)
         showImage = QtGui.QImage(show.data, show.shape[1], show.shape[0], QtGui.QImage.Format_RGB888)
         self.image_View_2.setPixmap(QtGui.QPixmap.fromImage(showImage))
-
 
     def show_full_screen(self, img):
         full_screen_img = cv2.resize(img, (full_screen_width, full_screen_height))
@@ -158,8 +168,6 @@ class Q_Window(QWidget):
 
 
 if __name__ == '__main__':
-
-    app = QApplication(sys.argv)  
-    ex = Q_Window()  
+    app = QApplication(sys.argv)
+    ex = Q_Window()
     sys.exit(app.exec_())
-
