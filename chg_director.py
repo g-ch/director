@@ -9,6 +9,8 @@ from PyQt5.QtWidgets import QMainWindow, QApplication, QPushButton, QWidget, QLa
 from PyQt5.QtGui import QPixmap, QImage
 import sys
 import multiprocessing
+import random
+import time
 
 # get the size of the screen
 screen_id = 1
@@ -24,10 +26,13 @@ class Q_Window(QWidget):
         self.initParas()
         self.initUI()
 
+
     def initParas(self):
         self.timer_camera = QtCore.QTimer()
         self.timer_camera_2 = QtCore.QTimer()
+        self.switch_game_timer = QtCore.QTimer()
 
+        # Video resolution
         self.cap = cv2.VideoCapture()
         self.cap_size = [1920, 1080]
         self.cap_2 = cv2.VideoCapture()
@@ -36,6 +41,18 @@ class Q_Window(QWidget):
         self.CAM_1 = 0
         self.CAM_2 = 1
         self.full_screen_show_id = 1
+
+        # Poster path
+        self.poster = cv2.imread('timg.jpeg') 
+        self.game_background = 'red.jpeg'
+        self.game_question_img = [cv2.imread('877668843.jpg'), cv2.imread('1063312050.jpg'), cv2.imread('1986420780.jpg')]
+
+        # Table list for game
+        self.table_list = [1,2,3,4,5,6,7,8,9,10,11,12,13,14,15,16,17,18,19,20]
+        self.table_counter = 0
+        self.counter_max = len(self.table_list)
+        random.shuffle(self.table_list)
+
 
     def initUI(self):
         self.image_View = QLabel("image", self)
@@ -67,25 +84,79 @@ class Q_Window(QWidget):
         self.det_Button_2.resize(200, 40)
         self.det_Button_2.move(900, 520)
 
-        self.switch_Button = QPushButton(u'切换到二号输入源', self)
-        self.switch_Button.clicked.connect(self.switch_input)
-        self.switch_Button.resize(200, 120)
-        self.switch_Button.move(400, 700)
+        self.switch_Button_1 = QPushButton(u'切换到一号输入源', self)
+        self.switch_Button_1.clicked.connect(self.switch_input_1)
+        self.switch_Button_1.resize(200, 60)
+        self.switch_Button_1.move(400, 600)
+
+        self.switch_Button_2 = QPushButton(u'切换到二号输入源', self)
+        self.switch_Button_2.clicked.connect(self.switch_input_2)
+        self.switch_Button_2.resize(200, 60)
+        self.switch_Button_2.move(400, 670)
+
+        self.switch_Button_3 = QPushButton(u'切换到海报显示', self)
+        self.switch_Button_3.clicked.connect(self.switch_poster)
+        self.switch_Button_3.resize(200, 60)
+        self.switch_Button_3.move(400, 740)
+
+        self.switch_Button_4 = QPushButton(u'切换到桌号选择', self)
+        self.switch_Button_4.clicked.connect(self.switch_game)
+        self.switch_Button_4.resize(200, 60)
+        self.switch_Button_4.move(400, 810)
 
         self.timer_camera.timeout.connect(self.show_camera)
         self.timer_camera_2.timeout.connect(self.show_camera_2)
+        self.switch_game_timer.timeout.connect(self.show_game_result)
 
         self.setGeometry(300, 300, 1460, 900)
         self.setWindowTitle('ChgDirector')
         self.show()
 
-    def switch_input(self):
-        if self.full_screen_show_id == 1:
-            self.full_screen_show_id = 2
-            self.switch_Button.setText(u'切换到一号输入源')
-        else:
-            self.full_screen_show_id = 1
-            self.switch_Button.setText(u'切换到二号输入源')
+
+    def switch_input_1(self):
+        self.full_screen_show_id = 1
+
+
+    def switch_input_2(self):
+        self.full_screen_show_id = 2
+
+
+    def switch_poster(self):
+        self.full_screen_show_id = 3
+        self.show_full_screen(self.poster)
+        self.show_small_window(self.poster)
+        
+
+    def switch_game(self):
+        self.full_screen_show_id = 4
+        seq = random.randint(0, len(self.game_question_img)-1)
+        question_img = self.game_question_img[seq]
+        self.show_full_screen(question_img)
+        self.show_small_window(question_img)
+
+        self.switch_game_timer.start(1000)
+        
+
+    def show_game_result(self):
+        self.switch_game_timer.stop()
+        
+        font = cv2.FONT_HERSHEY_SIMPLEX
+        place_x = 540
+        place_y = 400
+
+        if self.table_list[self.table_counter] > 9:
+            place_x -= 100
+
+        background = cv2.imread(self.game_background)
+        img_num = cv2.putText(background, str(self.table_list[self.table_counter]), (place_x, place_y), font, 8, (255, 255, 255), 15)
+        
+        self.table_counter += 1
+        if self.table_counter >= self.counter_max:
+            self.table_counter = 0
+
+        self.show_full_screen(img_num)
+        self.show_small_window(img_num)
+
 
     def open_camera(self):
         if self.timer_camera.isActive() == False:
@@ -107,20 +178,19 @@ class Q_Window(QWidget):
             self.image_View.clear()
             self.det_Button.setText(u'打开输入源')
 
+
     def show_camera(self):
         flag, image = self.cap.read()
 
         if self.full_screen_show_id == 1:
             self.show_full_screen(image)
-            out_img = cv2.resize(image, (320, 240))
-            out_img = cv2.cvtColor(out_img, cv2.COLOR_BGR2RGB)
-            showImage_out = QtGui.QImage(out_img.data, out_img.shape[1], out_img.shape[0], QtGui.QImage.Format_RGB888)
-            self.image_View_out.setPixmap(QtGui.QPixmap.fromImage(showImage_out))
+            self.show_small_window(image)
 
         show = cv2.resize(image, (640, 480))
         show = cv2.cvtColor(show, cv2.COLOR_BGR2RGB)
         showImage = QtGui.QImage(show.data, show.shape[1], show.shape[0], QtGui.QImage.Format_RGB888)
         self.image_View.setPixmap(QtGui.QPixmap.fromImage(showImage))
+
 
     def open_camera_2(self):
         if self.timer_camera.isActive() == False:
@@ -142,20 +212,19 @@ class Q_Window(QWidget):
             self.image_View_2.clear()
             self.det_Button_2.setText(u'打开输入源')
 
+
     def show_camera_2(self):
         flag, image = self.cap_2.read()
 
         if self.full_screen_show_id == 2:
             self.show_full_screen(image)
-            out_img = cv2.resize(image, (320, 240))
-            out_img = cv2.cvtColor(out_img, cv2.COLOR_BGR2RGB)
-            showImage_out = QtGui.QImage(out_img.data, out_img.shape[1], out_img.shape[0], QtGui.QImage.Format_RGB888)
-            self.image_View_out.setPixmap(QtGui.QPixmap.fromImage(showImage_out))
+            self.show_small_window(image)
 
         show = cv2.resize(image, (640, 480))
         show = cv2.cvtColor(show, cv2.COLOR_BGR2RGB)
         showImage = QtGui.QImage(show.data, show.shape[1], show.shape[0], QtGui.QImage.Format_RGB888)
         self.image_View_2.setPixmap(QtGui.QPixmap.fromImage(showImage))
+
 
     def show_full_screen(self, img):
         full_screen_img = cv2.resize(img, (full_screen_width, full_screen_height))
@@ -165,6 +234,13 @@ class Q_Window(QWidget):
         cv2.setWindowProperty(window_name, cv2.WND_PROP_FULLSCREEN, cv2.WINDOW_FULLSCREEN)
         cv2.imshow(window_name, full_screen_img)
         cv2.waitKey(1)
+
+
+    def show_small_window(self, img):
+        out_img = cv2.resize(img, (320, 240))
+        out_img = cv2.cvtColor(out_img, cv2.COLOR_BGR2RGB)
+        showImage_out = QtGui.QImage(out_img.data, out_img.shape[1], out_img.shape[0], QtGui.QImage.Format_RGB888)
+        self.image_View_out.setPixmap(QtGui.QPixmap.fromImage(showImage_out))
 
 
 if __name__ == '__main__':
